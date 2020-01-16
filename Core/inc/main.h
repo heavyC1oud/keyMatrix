@@ -3,8 +3,8 @@
 /*********************************************************************/
 
 /**********************	DEFINE	**************************************/
-#define MATRIX_POLL_PERIOD 10				//	polling period value in milliseconds
-#define LONG_PRESS_TIMER_MAX 100			//	set long press delay time to 1 second (100 if polling period 10 ms)
+#define MATRIX_POLL_PERIOD 50				//	polling period value in milliseconds
+#define LONG_PRESS_TIMER_MAX 20				//	set long press delay time to 1 second (20 if polling period 50 ms)
 
 #define KEY_PRESS_COUNT_SINGLE 1
 #define KEY_PRESS_COUNT_DOUBLE 2
@@ -25,15 +25,16 @@ typedef enum {
 	LED_COLOR_RED,
 	LED_COLOR_GREEN,
 	LED_COLOR_BLUE,
-	LED_COLOR_YELLOW,
+	LED_COLOR_ORANGE,
 } LED_COLOR_typedef;
 
 typedef struct {
 	char key;
 	FlagStatus prevState;
 	FlagStatus curState;
-	FlagStatus shortPress;
-	FlagStatus longPress;
+	FlagStatus pressStart;
+	FlagStatus shortPressFinish;
+	FlagStatus longPressFinish;
 	FlagStatus longPressHold;
 	uint32_t longPressTimer;
 } KEY_typedef;

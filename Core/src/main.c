@@ -19,6 +19,10 @@ const char key[ROW][COLUMN] = {{'1', '2', '3'},
 KEY_typedef matrix[ROW][COLUMN] = {0};
 
 
+void taskTEST(void *pvParameters);
+volatile uint32_t testTime = 0;
+
+
 /*************************	FUNCTION	******************************/
 
 /**********************************************************************
@@ -33,29 +37,31 @@ void initGPIO(void)
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN | RCC_AHBENR_GPIOBEN;
 
 	//	scan GPIO (columns) set as output open-drain default HI-Z
-	//	CLM_1 / PORTA[0]
-	//	CLM_2 / PORTA[1]
-	//	CLM_3 / PORTA[2]
-	GPIOA->MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1 | GPIO_MODER_MODER2);
-	GPIOA->MODER |= GPIO_MODER_MODER0_0 | GPIO_MODER_MODER1_0 | GPIO_MODER_MODER2_0;
+	//	CLM_1 / PORTA[1]
+	//	CLM_2 / PORTA[4]
+	//	CLM_3 / PORTA[5]
+	GPIOA->MODER &= ~(GPIO_MODER_MODER1 | GPIO_MODER_MODER4 | GPIO_MODER_MODER5);
+	GPIOA->MODER |= GPIO_MODER_MODER1_0 | GPIO_MODER_MODER4_0 | GPIO_MODER_MODER5_0;
 
-	GPIOA->OTYPER |= GPIO_OTYPER_OT_0 | GPIO_OTYPER_OT_1 | GPIO_OTYPER_OT_2;
+	GPIOA->OTYPER |= GPIO_OTYPER_OT_1 | GPIO_OTYPER_OT_4 | GPIO_OTYPER_OT_5;
 
-	GPIOA->OSPEEDR |= GPIO_OSPEEDR_OSPEEDR0 | GPIO_OSPEEDR_OSPEEDR1 | GPIO_OSPEEDR_OSPEEDR2;
+	GPIOA->OSPEEDR |= GPIO_OSPEEDR_OSPEEDR1 | GPIO_OSPEEDR_OSPEEDR4 | GPIO_OSPEEDR_OSPEEDR5;
 
-	GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPDR0 | GPIO_PUPDR_PUPDR1 | GPIO_PUPDR_PUPDR2);
+	GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPDR1 | GPIO_PUPDR_PUPDR4 | GPIO_PUPDR_PUPDR5);
+	//	pull-up
+	GPIOA->PUPDR |= GPIO_PUPDR_PUPDR1_0 | GPIO_PUPDR_PUPDR4_0 | GPIO_PUPDR_PUPDR5_0;
 
-	GPIOA->BSRR = GPIO_BSRR_BS_0 | GPIO_BSRR_BS_1 | GPIO_BSRR_BS_2;
+	GPIOA->BSRR = GPIO_BSRR_BS_1 | GPIO_BSRR_BS_4 | GPIO_BSRR_BS_5;
 
 	//	poll GPIO (rows) set as input pull-up
-	//	ROW_1 / PORTB[0]
-	//	ROW_2 / PORTB[1]
-	//	ROW_3 / PORTB[2]
-	//	ROW_4 / PORTB[3]
-	GPIOB->MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1 | GPIO_MODER_MODER2 | GPIO_MODER_MODER3);
+	//	ROW_1 / PORTB[2]
+	//	ROW_2 / PORTB[3]
+	//	ROW_3 / PORTB[4]
+	//	ROW_4 / PORTB[5]
+	GPIOB->MODER &= ~(GPIO_MODER_MODER2 | GPIO_MODER_MODER3 | GPIO_MODER_MODER4 | GPIO_MODER_MODER5);
 
-	GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPDR0 | GPIO_PUPDR_PUPDR1 | GPIO_PUPDR_PUPDR2 | GPIO_PUPDR_PUPDR3);
-	GPIOB->PUPDR |= GPIO_PUPDR_PUPDR0_0 | GPIO_PUPDR_PUPDR1_0 | GPIO_PUPDR_PUPDR2_0 | GPIO_PUPDR_PUPDR3_0;
+	GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPDR2 | GPIO_PUPDR_PUPDR3 | GPIO_PUPDR_PUPDR4 | GPIO_PUPDR_PUPDR5);
+	GPIOB->PUPDR |= GPIO_PUPDR_PUPDR2_0 | GPIO_PUPDR_PUPDR3_0 | GPIO_PUPDR_PUPDR4_0 | GPIO_PUPDR_PUPDR5_0;
 
 	//	LED
 		//	enable PORTC bus
@@ -103,7 +109,7 @@ void switchLED(LED_COLOR_typedef color, LED_TURN_typedef turn)
 		}
 
 		break;
-	case LED_COLOR_GREEN:
+	case LED_COLOR_BLUE:
 		if(turn == LED_TURN_ON) {
 			GPIOC->BSRR = GPIO_BSRR_BS_7;
 		}
@@ -112,7 +118,7 @@ void switchLED(LED_COLOR_typedef color, LED_TURN_typedef turn)
 		}
 
 		break;
-	case LED_COLOR_BLUE:
+	case LED_COLOR_ORANGE:
 		if(turn == LED_TURN_ON) {
 			GPIOC->BSRR = GPIO_BSRR_BS_8;
 		}
@@ -121,7 +127,7 @@ void switchLED(LED_COLOR_typedef color, LED_TURN_typedef turn)
 		}
 
 		break;
-	case LED_COLOR_YELLOW:
+	case LED_COLOR_GREEN:
 		if(turn == LED_TURN_ON) {
 			GPIOC->BSRR = GPIO_BSRR_BS_9;
 		}
@@ -155,86 +161,90 @@ void taskPollMatrix(void *pvParameters)
 		}
 
 		//	scan column 1
-		GPIOA->BSRR = GPIO_BSRR_BR_0 | GPIO_BSRR_BS_1 | GPIO_BSRR_BS_2;
+		GPIOA->BSRR = GPIO_BSRR_BR_1 | GPIO_BSRR_BS_4 | GPIO_BSRR_BS_5;
+		vTaskDelay(1);
 		//	'1' - key
 		//	polling row 1
-		state = GPIOB->IDR & GPIO_IDR_0;
-		if(state) matrix[0][0].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_2;
+		if(!state) matrix[0][0].curState = SET;
 
 		//	'4' - key
 		//	polling row 2
-		state = GPIOB->IDR & GPIO_IDR_1;
-		if(state) matrix[1][0].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_3;
+		if(!state) matrix[1][0].curState = SET;
 
 		//	'7' - key
 		//	polling row 3
-		state = GPIOB->IDR & GPIO_IDR_2;
-		if(state) matrix[2][0].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_4;
+		if(!state) matrix[2][0].curState = SET;
 
 		//	'*' - key
 		//	polling row 4
-		state = GPIOB->IDR & GPIO_IDR_3;
-		if(state) matrix[3][0].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_5;
+		if(!state) matrix[3][0].curState = SET;
 
 		//	scan column 2
-		GPIOA->BSRR = GPIO_BSRR_BS_0 | GPIO_BSRR_BR_1 | GPIO_BSRR_BS_2;
+		GPIOA->BSRR = GPIO_BSRR_BS_1 | GPIO_BSRR_BR_4 | GPIO_BSRR_BS_5;
+		vTaskDelay(1);
 		//	'2' - key
 		//	polling row 1
-		state = GPIOB->IDR & GPIO_IDR_0;
-		if(state) matrix[0][1].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_2;
+		if(!state) matrix[0][1].curState = SET;
 
 		//	'5' - key
 		//	polling row 2
-		state = GPIOB->IDR & GPIO_IDR_1;
-		if(state) matrix[1][1].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_3;
+		if(!state) matrix[1][1].curState = SET;
 
 		//	'8' - key
 		//	polling row 3
-		state = GPIOB->IDR & GPIO_IDR_2;
-		if(state) matrix[2][1].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_4;
+		if(!state) matrix[2][1].curState = SET;
 
 		//	'0' - key
 		//	polling row 4
-		state = GPIOB->IDR & GPIO_IDR_3;
-		if(state) matrix[3][1].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_5;
+		if(!state) matrix[3][1].curState = SET;
 
 		//	scan column 3
-		GPIOA->BSRR = GPIO_BSRR_BS_0 | GPIO_BSRR_BS_1 | GPIO_BSRR_BR_2;
+		GPIOA->BSRR = GPIO_BSRR_BS_1 | GPIO_BSRR_BS_4 | GPIO_BSRR_BR_5;
+		vTaskDelay(1);
 		//	'3' - key
 		//	polling row 1
-		state = GPIOB->IDR & GPIO_IDR_0;
-		if(state) matrix[0][2].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_2;
+		if(!state) matrix[0][2].curState = SET;
 
 		//	'6' - key
 		//	polling row 2
-		state = GPIOB->IDR & GPIO_IDR_1;
-		if(state) matrix[1][2].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_3;
+		if(!state) matrix[1][2].curState = SET;
 
 		//	'9' - key
 		//	polling row 3
-		state = GPIOB->IDR & GPIO_IDR_2;
-		if(state) matrix[2][2].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_4;
+		if(!state) matrix[2][2].curState = SET;
 
 		//	'#' - key
 		//	polling row 4
-		state = GPIOB->IDR & GPIO_IDR_3;
-		if(state) matrix[3][2].curState = SET;
+		state = GPIOB->IDR & GPIO_IDR_5;
+		if(!state) matrix[3][2].curState = SET;
 
-		//	set scan pins to hi-z
-		GPIOA->BSRR = GPIO_BSRR_BS_0 | GPIO_BSRR_BS_1 | GPIO_BSRR_BS_2;
+		//	set scan pins to pull-up
+		GPIOA->BSRR = GPIO_BSRR_BS_1 | GPIO_BSRR_BS_4 | GPIO_BSRR_BS_5;
 
 		//	handling collected data
 		for(uint8_t j = 0; j < ROW; j++) {
 			for(uint8_t i = 0; i < COLUMN; i++) {
 				//	push key detect
 				if((matrix[j][i].curState == SET) && (matrix[j][i].prevState == RESET)) {
+					matrix[j][i].pressStart = SET;
 					matrix[j][i].longPressTimer++;
 				}
 				//	release key detect
 				else if((matrix[j][i].curState == RESET) && (matrix[j][i].prevState == SET)) {
 					//	short press detect
 					if(matrix[j][i].longPressTimer <= LONG_PRESS_TIMER_MAX) {
-						matrix[j][i].shortPress = SET;
+						matrix[j][i].shortPressFinish = SET;
 					}
 
 					matrix[j][i].longPressHold = RESET;			//	re-triggering avoid
@@ -247,15 +257,17 @@ void taskPollMatrix(void *pvParameters)
 					//	long press detect
 					if((matrix[j][i].longPressTimer > LONG_PRESS_TIMER_MAX) && (matrix[j][i].longPressHold == RESET)) {
 						matrix[j][i].longPressHold = SET;			//	re-triggering avoid
-						matrix[j][i].longPress = SET;
+						matrix[j][i].longPressFinish = SET;
 					}
 				}
 
 				matrix[j][i].prevState = matrix[j][i].curState;
 
-				vTaskDelay(MATRIX_POLL_PERIOD);
+				testTime++;
 			}
 		}
+
+		vTaskDelay(MATRIX_POLL_PERIOD - 3);			//	3 - summary scan column level set delays
 	}
 }
 /*********************************************************************/
@@ -269,51 +281,44 @@ void taskPollMatrix(void *pvParameters)
 **********************************************************************/
 void taskKeyHandle(void *pvParameters)
 {
-	uint8_t keyShortPressed = 0;
-	uint8_t keyLongPressed = 0;
+	uint8_t keyPressStarted = 0;
+	uint8_t keyShortPressFinished = 0;
+	uint8_t keyLongPressFinished = 0;
 	uint8_t keySet = 0;
 	char key1 = 0;
 	char key2 = 0;
-
-//	uint32_t matrixSize = 0;
-//	KEY_typedef localMatrix[ROW][COLUMN] = {0};
-//
-//	matrixSize = sizeof(matrix);
-//
-//	memcpy(&localMatrix, &matrix, sizeof();
-
 
 	while(1) {
 		//	calculate pressed keys
 		for(uint8_t j = 0; j < ROW; j++) {
 			for(uint8_t i = 0; i < COLUMN; i++) {
-				if(matrix[j][i].shortPress == SET) keyShortPressed++;
+				if(matrix[j][i].pressStart == SET) keyPressStarted++;
+				if(matrix[j][i].shortPressFinish == SET) keyShortPressFinished++;
 
-				if(matrix[j][i].longPress == SET) keyLongPressed++;
+				if(matrix[j][i].longPressFinish == SET) keyLongPressFinished++;
 			}
 		}
 
 		//	short single pressed context
-		if(keyShortPressed == KEY_PRESS_COUNT_SINGLE) {
+		if((keyPressStarted == KEY_PRESS_COUNT_SINGLE) && (keyShortPressFinished == KEY_PRESS_COUNT_SINGLE)) {
 			for(uint8_t j = 0; j < ROW; j++) {
 				for(uint8_t i = 0; i < COLUMN; i++) {
-					if(matrix[j][i].shortPress == SET) {
-						matrix[j][i].shortPress = RESET;
+					if((matrix[j][i].pressStart == SET) && (matrix[j][i].shortPressFinish == SET)) {
+						matrix[j][i].pressStart = RESET;
+						matrix[j][i].shortPressFinish = RESET;
 
 						single_key_pressed(matrix[j][i].key);
-
-						return;
 					}
 				}
 			}
 		}
-
 		//	short double pressed context
-		else if(keyShortPressed == KEY_PRESS_COUNT_DOUBLE) {
+		if((keyPressStarted == KEY_PRESS_COUNT_DOUBLE) && (keyShortPressFinished == KEY_PRESS_COUNT_DOUBLE)) {
 			for(uint8_t j = 0; j < ROW; j++) {
 				for(uint8_t i = 0; i < COLUMN; i++) {
-					if(matrix[j][i].shortPress == SET) {
-						matrix[j][i].shortPress = RESET;
+					if((matrix[j][i].pressStart == SET) && (matrix[j][i].shortPressFinish == SET)) {
+						matrix[j][i].pressStart = RESET;
+						matrix[j][i].shortPressFinish = RESET;
 
 						if(keySet == 0) {
 							key1 = matrix[j][i].key;
@@ -325,47 +330,44 @@ void taskKeyHandle(void *pvParameters)
 
 							double_key_pressed(key1, key2);
 						}
-
-						return;
 					}
 				}
 			}
 		}
-
 		//	short multi pressed context
-		else if(keyShortPressed > KEY_PRESS_COUNT_DOUBLE) {
+		else if((keyPressStarted > KEY_PRESS_COUNT_DOUBLE) || (keyShortPressFinished > KEY_PRESS_COUNT_DOUBLE)) {
 			for(uint8_t j = 0; j < ROW; j++) {
 				for(uint8_t i = 0; i < COLUMN; i++) {
-					if(matrix[j][i].shortPress == SET) {
-						matrix[j][i].shortPress = RESET;
+					if(matrix[j][i].pressStart == SET) {
+						matrix[j][i].pressStart = RESET;
+					}
+
+					if(matrix[j][i].shortPressFinish == SET) {
+						matrix[j][i].shortPressFinish = RESET;
 					}
 				}
 			}
-
-			return;
 		}
-
 		//	long single pressed context
-		else if(keyLongPressed == KEY_PRESS_COUNT_SINGLE) {
+		else if((keyPressStarted == KEY_PRESS_COUNT_SINGLE) && (keyLongPressFinished == KEY_PRESS_COUNT_SINGLE)) {
 			for(uint8_t j = 0; j < ROW; j++) {
 				for(uint8_t i = 0; i < COLUMN; i++) {
-					if(matrix[j][i].longPress == SET) {
-						matrix[j][i].longPress = RESET;
+					if((matrix[j][i].pressStart == SET) && (matrix[j][i].longPressFinish == SET)) {
+						matrix[j][i].pressStart = RESET;
+						matrix[j][i].longPressFinish = RESET;
 
 						single_key_long_pressed(matrix[j][i].key);
-
-						return;
 					}
 				}
 			}
 		}
-
 		//	long double pressed context
-		else if(keyLongPressed == KEY_PRESS_COUNT_DOUBLE) {
+		else if((keyPressStarted == KEY_PRESS_COUNT_DOUBLE) && (keyLongPressFinished == KEY_PRESS_COUNT_DOUBLE)) {
 			for(uint8_t j = 0; j < ROW; j++) {
 				for(uint8_t i = 0; i < COLUMN; i++) {
-					if(matrix[j][i].longPress == SET) {
-						matrix[j][i].longPress = RESET;
+					if((matrix[j][i].pressStart == SET) && (matrix[j][i].longPressFinish == SET)) {
+						matrix[j][i].pressStart = RESET;
+						matrix[j][i].longPressFinish = RESET;
 
 						if(keySet == 0) {
 							key1 = matrix[j][i].key;
@@ -377,23 +379,31 @@ void taskKeyHandle(void *pvParameters)
 
 							double_key_long_pressed(key1, key2);
 						}
-
-						return;
 					}
 				}
 			}
 		}
-
 		//	long multi pressed context
-		else if(keyLongPressed > KEY_PRESS_COUNT_DOUBLE) {
+		else if((keyPressStarted > KEY_PRESS_COUNT_DOUBLE) || (keyLongPressFinished > KEY_PRESS_COUNT_DOUBLE)) {
 			for(uint8_t j = 0; j < ROW; j++) {
 				for(uint8_t i = 0; i < COLUMN; i++) {
-					if(matrix[j][i].longPress == SET) {
-						matrix[j][i].longPress = RESET;
+					if(matrix[j][i].pressStart == SET) {
+						matrix[j][i].pressStart = RESET;
+					}
+
+					if(matrix[j][i].longPressFinish == SET) {
+						matrix[j][i].longPressFinish = RESET;
 					}
 				}
 			}
 		}
+
+		keyShortPressFinished = 0;
+		keyPressStarted = 0;
+		keyLongPressFinished = 0;
+		keySet = 0;
+		key1 = 0;
+		key2 = 0;
 	}
 }
 /*********************************************************************/
@@ -429,11 +439,11 @@ void single_key_long_pressed(char key)
 
 void double_key_long_pressed(char key1, char key2)
 {
-	switchLED(LED_COLOR_YELLOW, LED_TURN_ON);
+	switchLED(LED_COLOR_ORANGE, LED_TURN_ON);
 
 	vTaskDelay(HANDLE_DELAY);
 
-	switchLED(LED_COLOR_YELLOW, LED_TURN_OFF);
+	switchLED(LED_COLOR_ORANGE, LED_TURN_OFF);
 }
 
 
@@ -451,8 +461,9 @@ int main(void)
 			matrix[j][i].key = key[j][i];
 			matrix[j][i].prevState = RESET;
 			matrix[j][i].curState = RESET;
-			matrix[j][i].shortPress = RESET;
-			matrix[j][i].longPress = RESET;
+			matrix[j][i].pressStart = RESET;
+			matrix[j][i].shortPressFinish = RESET;
+			matrix[j][i].longPressFinish = RESET;
 			matrix[j][i].longPressHold = RESET;
 			matrix[j][i].longPressTimer = 0;
 		}
@@ -468,3 +479,4 @@ int main(void)
 	//	program never run here
 	while(1);
 }
+
