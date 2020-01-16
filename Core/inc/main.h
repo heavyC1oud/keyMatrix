@@ -3,28 +3,48 @@
 /*********************************************************************/
 
 /**********************	DEFINE	**************************************/
-#define LONG_PRESS_DELAY_COUNT 50			//	set long press delay time to 1 second (polling period 20 ms)
+#define MATRIX_POLL_PERIOD 10				//	polling period value in milliseconds
+#define LONG_PRESS_TIMER_MAX 100			//	set long press delay time to 1 second (100 if polling period 10 ms)
+
+#define KEY_PRESS_COUNT_SINGLE 1
+#define KEY_PRESS_COUNT_DOUBLE 2
+
+#define HANDLE_DELAY 50
 
 #define ROW 4
 #define COLUMN 3
 
 
+
+typedef enum {
+	LED_TURN_ON,
+	LED_TURN_OFF,
+} LED_TURN_typedef;
+
+typedef enum {
+	LED_COLOR_RED,
+	LED_COLOR_GREEN,
+	LED_COLOR_BLUE,
+	LED_COLOR_YELLOW,
+} LED_COLOR_typedef;
+
 typedef struct {
 	char key;
 	FlagStatus prevState;
 	FlagStatus curState;
-	FlagStatus press;
+	FlagStatus shortPress;
 	FlagStatus longPress;
 	FlagStatus longPressHold;
-	uint16_t delayCount;
+	uint32_t longPressTimer;
 } KEY_typedef;
 
 
 
 /*************************	FUNCTIONS PROTOTYPE	******************************/
 void initGPIO(void);
-void pollMatrix(void);
-void keyHandle(void);
+void switchLED(LED_COLOR_typedef color, LED_TURN_typedef turn);
+void taskPollMatrix(void *pvParameters);
+void taskKeyHandle(void *pvParameters);
 
 void single_key_pressed(char key);
 void double_key_pressed(char key1, char key2);
